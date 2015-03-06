@@ -264,6 +264,16 @@ namespace Microsoft.Data.Entity
 
         /// <summary>
         ///     <para>
+        ///         Gets the <see cref="DbContext" /> instance.
+        ///     </para>
+        /// </summary>
+        public virtual DbContext Context
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        /// <summary>
+        ///     <para>
         ///         Gets the scoped <see cref="IServiceProvider" /> being used to resolve services.
         ///     </para>
         ///     <para>

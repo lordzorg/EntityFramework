@@ -12,7 +12,7 @@ using Remotion.Linq;
 namespace Microsoft.Data.Entity.Query
 {
     public class EntityQueryable<TResult>
-        : QueryableBase<TResult>, IAsyncEnumerable<TResult>, IEntityQueryable
+        : QueryableBase<TResult>, IAsyncEnumerable<TResult>, IMetadata
     {
         private readonly LazyRef<Annotatable> _annotatable
             = new LazyRef<Annotatable>(
@@ -69,7 +69,12 @@ namespace Microsoft.Data.Entity.Query
 
         public override string ToString()
         {
-            return base.ToString() + string.Join(", ", _annotatable.Value.Annotations.Select(annotation => annotation.Value));
+            return _annotatable.Value.Annotations.Count() == 0
+                ? base.ToString()
+                : string.Format("{0} ({1})",
+                    base.ToString(),
+                    string.Join(", ", _annotatable.Value.Annotations.Select(annotation =>
+                        string.Format("{0} = {1}", annotation.Name, annotation.Value))));
         }
 
         private class Annotatable : MetadataBase

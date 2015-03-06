@@ -7,23 +7,19 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
+using Microsoft.Data.Entity.Tests;
 using Xunit;
 
 namespace Microsoft.Data.Entity.Relational.FunctionalTests
 {
-    public class AsyncQueryRelationalTest<TFixture> : AsyncQueryTestBase<TFixture>
+    public class AsyncFromSqlQueryTestBase<TFixture> : IClassFixture<TFixture>
         where TFixture : NorthwindQueryFixtureBase, new()
     {
-        protected AsyncQueryRelationalTest(TFixture fixture)
-            : base(fixture)
-        {
-        }
-
         [Fact]
         public virtual async Task From_sql_queryable_simple()
         {
             Assert.Equal(91,
-                await AssertRelationalQuery<Customer>(
+                await AssertQuery<Customer>(
                     cs => cs.FromSql("SELECT * FROM Customers"),
                     cs => cs));
         }
@@ -32,7 +28,7 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         public virtual async Task From_sql_queryable_filter()
         {
             Assert.Equal(14,
-                await AssertRelationalQuery<Customer>(
+                await AssertQuery<Customer>(
                     cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%z%'"),
                     cs => cs.Where(c => c.ContactName.Contains("z"))));
         }
@@ -41,12 +37,12 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         public virtual async Task From_sql_queryable_cached_by_query()
         {
             Assert.Equal(6,
-                await AssertRelationalQuery<Customer>(
+                await AssertQuery<Customer>(
                     cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.City = 'London'"),
                     cs => cs.Where(c => c.City == "London")));
 
             Assert.Equal(1,
-                await AssertRelationalQuery<Customer>(
+                await AssertQuery<Customer>(
                     cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.City = 'Seattle'"),
                     cs => cs.Where(c => c.City == "Seattle")));
         }
@@ -57,20 +53,32 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
             var title = "Sales Associate";
 
             Assert.Equal(4,
-                await AssertRelationalQuery<Customer>(
+                await AssertQuery<Customer>(
                     cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%o%'").Where(c => c.ContactTitle == title),
                     cs => cs.Where(c => c.ContactName.Contains("o")).Where(c => c.ContactTitle == title)));
 
             title = "Sales Manager";
 
             Assert.Equal(7,
-                await AssertRelationalQuery<Customer>(
+                await AssertQuery<Customer>(
                     cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%o%'").Where(c => c.ContactTitle == title),
                     cs => cs.Where(c => c.ContactName.Contains("o")).Where(c => c.ContactTitle == title)));
         }
 
-        protected async Task<int> AssertRelationalQuery<TItem>(
-            Func<RelationalDbSet<TItem>, IQueryable<object>> relationalQuery,
+        protected NorthwindContext CreateContext()
+        {
+            return Fixture.CreateContext();
+        }
+
+        protected AsyncFromSqlQueryTestBase(TFixture fixture)
+        {
+            Fixture = fixture;
+        }
+
+        protected TFixture Fixture { get; }
+
+        private async Task<int> AssertQuery<TItem>(
+            Func<DbSet<TItem>, IQueryable<object>> relationalQuery,
             Func<IQueryable<TItem>, IQueryable<object>> l2oQuery,
             bool assertOrder = false,
             Action<IList<object>, IList<object>> asserter = null)
@@ -78,9 +86,9 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                return AssertResults(
+                return TestHelpers.AssertResults(
                     l2oQuery(NorthwindData.Set<TItem>()).ToArray(),
-                    await relationalQuery(context.Set<TItem>().AsRelational()).ToArrayAsync(),
+                    await relationalQuery(context.Set<TItem>()).ToArrayAsync(),
                     assertOrder,
                     asserter);
             }

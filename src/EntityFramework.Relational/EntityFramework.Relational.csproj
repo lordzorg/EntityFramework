@@ -206,7 +206,6 @@
     <Compile Include="IRelationalDataStoreServices.cs" />
     <Compile Include="RelationalDbContextOptions.cs" />
     <Compile Include="RelationalDbSetExtensions.cs" />
-    <Compile Include="RelationalDbSet`.cs" />
     <Compile Include="RelationalMetadataExtensions.cs" />
     <Compile Include="RelationalOptionsExtension.cs" />
     <Compile Include="RelationalConnection.cs" />

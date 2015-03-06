@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
 using Microsoft.Data.Entity.Query;
+using Microsoft.Data.Entity.Tests;
 using Xunit;
 
 // ReSharper disable AccessToModifiedClosure
@@ -2525,7 +2526,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
             {
 
                 var foo = context.Database.Connection;
-                AssertResults(
+                TestHelpers.AssertResults(
                     new[] { query(NorthwindData.Set<TItem>()) },
                     new[] { query(context.Set<TItem>()) },
                     assertOrder);
@@ -2539,7 +2540,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     new[] { query(NorthwindData.Set<TItem>()) },
                     new[] { query(context.Set<TItem>()) },
                     assertOrder);
@@ -2553,7 +2554,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     new[] { query(NorthwindData.Set<TItem>()) },
                     new[] { query(context.Set<TItem>()) },
                     assertOrder);
@@ -2568,7 +2569,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     new[] { query(NorthwindData.Set<TItem1>(), NorthwindData.Set<TItem2>()) },
                     new[] { query(context.Set<TItem1>(), context.Set<TItem2>()) },
                     assertOrder);
@@ -2584,7 +2585,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     new[] { query(NorthwindData.Set<TItem1>(), NorthwindData.Set<TItem2>(), NorthwindData.Set<TItem3>()) },
                     new[] { query(context.Set<TItem1>(), context.Set<TItem2>(), context.Set<TItem3>()) },
                     assertOrder);
@@ -2599,7 +2600,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     query(NorthwindData.Set<TItem>()).ToArray(),
                     query(context.Set<TItem>()).ToArray(),
                     assertOrder,
@@ -2625,7 +2626,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     query(NorthwindData.Set<TItem1>(), NorthwindData.Set<TItem2>()).ToArray(),
                     query(context.Set<TItem1>(), context.Set<TItem2>()).ToArray(),
                     assertOrder,
@@ -2642,7 +2643,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     query(NorthwindData.Set<TItem1>(), NorthwindData.Set<TItem2>(), NorthwindData.Set<TItem3>()).ToArray(),
                     query(context.Set<TItem1>(), context.Set<TItem2>(), context.Set<TItem3>()).ToArray(),
                     assertOrder);
@@ -2655,7 +2656,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     query(NorthwindData.Set<TItem>()).ToArray(),
                     query(context.Set<TItem>()).ToArray(),
                     assertOrder);
@@ -2668,7 +2669,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     query(NorthwindData.Set<TItem>()).ToArray(),
                     query(context.Set<TItem>()).ToArray(),
                     assertOrder);
@@ -2684,7 +2685,7 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     l2oQuery(NorthwindData.Set<TItem>()).ToArray(),
                     efQuery(context.Set<TItem>()).ToArray(),
                     assertOrder);
@@ -2699,43 +2700,10 @@ namespace Microsoft.Data.Entity.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     query(NorthwindData.Set<TItem>()).ToArray(),
                     query(context.Set<TItem>()).ToArray(),
                     assertOrder);
-            }
-        }
-
-        protected static void AssertResults<T>(
-            IList<T> l2oItems,
-            IList<T> efItems,
-            bool assertOrder,
-            Action<IList<T>, IList<T>> asserter = null)
-        {
-            Assert.Equal(l2oItems.Count, efItems.Count);
-
-            if (asserter != null)
-            {
-                asserter(l2oItems, efItems);
-            }
-            else
-            {
-                if (assertOrder)
-                {
-                    Assert.Equal(l2oItems, efItems);
-                }
-                else
-                {
-                    foreach (var l2oItem in l2oItems)
-                    {
-                        Assert.True(
-                            efItems.Contains(l2oItem),
-                            string.Format(
-                                "\r\nL2o item: [{0}] not found in EF results: [{1}]...",
-                                l2oItem,
-                                string.Join(", ", efItems.Take(10))));
-                    }
-                }
             }
         }
     }

@@ -13,19 +13,19 @@ namespace Microsoft.Data.Entity.Relational.Query.Expressions
     public class RawSqlDerivedTableExpression : TableExpressionBase
     {
         public RawSqlDerivedTableExpression(
-            [NotNull] string rawSql,
+            [NotNull] string sql,
             [NotNull] string alias,
             [NotNull] IQuerySource querySource)
             : base(
                   Check.NotNull(querySource, nameof(querySource)),
                   Check.NotEmpty(alias, nameof(alias)))
         {
-            Check.NotEmpty(rawSql, nameof(rawSql));
+            Check.NotEmpty(sql, nameof(sql));
 
-            RawSql = rawSql;
+            Sql = sql;
         }
 
-        public virtual string RawSql { get; }
+        public virtual string Sql { get; }
 
         public override Expression Accept([NotNull] ExpressionTreeVisitor visitor)
         {
@@ -40,7 +40,7 @@ namespace Microsoft.Data.Entity.Relational.Query.Expressions
 
         public override string ToString()
         {
-            return RawSql + " " + Alias;
+            return Sql + " " + Alias;
         }
     }
 }

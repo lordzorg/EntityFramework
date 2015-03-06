@@ -19,11 +19,10 @@ namespace Microsoft.Data.Entity.Query.ExpressionTreeVisitors
 
         protected override Expression VisitConstantExpression(ConstantExpression constantExpression)
         {
-            var entityQueryable = constantExpression.Value as IEntityQueryable;
-
-            if (entityQueryable != null)
+            if (constantExpression.Type.GetTypeInfo().IsGenericType
+                && constantExpression.Type.GetGenericTypeDefinition() == typeof(EntityQueryable<>))
             {
-                return VisitEntityQueryable(entityQueryable.ElementType);
+                return VisitEntityQueryable(((IQueryable)constantExpression.Value).ElementType);
             }
 
             return constantExpression;

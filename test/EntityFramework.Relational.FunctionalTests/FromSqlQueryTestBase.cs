@@ -5,22 +5,18 @@ using System;
 using System.Linq;
 using Microsoft.Data.Entity.FunctionalTests;
 using Microsoft.Data.Entity.FunctionalTests.TestModels.Northwind;
+using Microsoft.Data.Entity.Tests;
 using Xunit;
 
 namespace Microsoft.Data.Entity.Relational.FunctionalTests
 {
-    public class QueryRelationalTest<TFixture> : QueryTestBase<TFixture>
+    public abstract class FromSqlQueryTestBase<TFixture> : IClassFixture<TFixture>
         where TFixture : NorthwindQueryFixtureBase, new()
     {
-        protected QueryRelationalTest(TFixture fixture)
-            : base(fixture)
-        {
-        }
-
         [Fact]
         public virtual void From_sql_queryable_simple()
         {
-            AssertRelationalQuery<Customer>(
+            AssertQuery<Customer>(
                 cs => cs.FromSql("SELECT * FROM Customers"),
                 cs => cs,
                 entryCount: 91);
@@ -29,7 +25,7 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         [Fact]
         public virtual void From_sql_queryable_filter()
         {
-            AssertRelationalQuery<Customer>(
+            AssertQuery<Customer>(
                 cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%z%'"),
                 cs => cs.Where(c => c.ContactName.Contains("z")),
                 entryCount: 14);
@@ -38,12 +34,12 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         [Fact]
         public virtual void From_sql_queryable_cached_by_query()
         {
-            AssertRelationalQuery<Customer>(
+            AssertQuery<Customer>(
                 cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.City = 'London'"),
                 cs => cs.Where(c => c.City == "London"),
                 entryCount: 6);
 
-            AssertRelationalQuery<Customer>(
+            AssertQuery<Customer>(
                 cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.City = 'Seattle'"),
                 cs => cs.Where(c => c.City == "Seattle"),
                 entryCount: 1);
@@ -54,21 +50,33 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         {
             var title = "Sales Associate";
 
-            AssertRelationalQuery<Customer>(
+            AssertQuery<Customer>(
                 cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%o%'").Where(c => c.ContactTitle == title),
                 cs => cs.Where(c => c.ContactName.Contains("o")).Where(c => c.ContactTitle == title),
                 entryCount: 4);
 
             title = "Sales Manager";
 
-            AssertRelationalQuery<Customer>(
+            AssertQuery<Customer>(
                 cs => cs.FromSql("SELECT * FROM Customers WHERE Customers.ContactName LIKE '%o%'").Where(c => c.ContactTitle == title),
                 cs => cs.Where(c => c.ContactName.Contains("o")).Where(c => c.ContactTitle == title),
                 entryCount: 7);
         }
 
-        protected void AssertRelationalQuery<TItem>(
-            Func<RelationalDbSet<TItem>, IQueryable<object>> relationalQuery,
+        protected NorthwindContext CreateContext()
+        {
+            return Fixture.CreateContext();
+        }
+
+        protected FromSqlQueryTestBase(TFixture fixture)
+        {
+            Fixture = fixture;
+        }
+
+        protected TFixture Fixture { get; }
+
+        private void AssertQuery<TItem>(
+            Func<DbSet<TItem>, IQueryable<object>> relationalQuery,
             Func<IQueryable<TItem>, IQueryable<object>> l2oQuery,
             bool assertOrder = false,
             int entryCount = 0)
@@ -76,9 +84,9 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
         {
             using (var context = CreateContext())
             {
-                AssertResults(
+                TestHelpers.AssertResults(
                     l2oQuery(NorthwindData.Set<TItem>()).ToArray(),
-                    relationalQuery(context.Set<TItem>().AsRelational()).ToArray(),
+                    relationalQuery(context.Set<TItem>()).ToArray(),
                     assertOrder);
 
                 Assert.Equal(entryCount, context.ChangeTracker.Entries().Count());

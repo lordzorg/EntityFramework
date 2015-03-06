@@ -131,6 +131,8 @@ namespace Microsoft.Data.Entity.Internal
 
         IQueryProvider IQueryable.Provider => _entityQueryable.Value.Provider;
 
+        public override DbContext Context => _context;
+
         IServiceProvider IAccessor<IServiceProvider>.Service => ((IAccessor<IServiceProvider>)_context).Service;
     }
 }

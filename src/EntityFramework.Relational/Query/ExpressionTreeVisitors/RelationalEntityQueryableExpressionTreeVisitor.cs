@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Query;
@@ -71,13 +72,16 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
 
         protected override Expression VisitConstantExpression(ConstantExpression constantExpression)
         {
-            var entityQueryable = constantExpression.Value as IEntityQueryable;
+            Check.NotNull(constantExpression, nameof(constantExpression));
 
-            if (entityQueryable != null)
+            if (constantExpression.Type.GetTypeInfo().IsGenericType
+                && constantExpression.Type.GetGenericTypeDefinition() == typeof(EntityQueryable<>))
             {
-                if (entityQueryable["sql"] != null)
+                var sql = ((IMetadata)constantExpression.Value)["Sql"];
+
+                if (sql != null)
                 {
-                    return VisitRawSqlQueryable(entityQueryable.ElementType, entityQueryable["sql"]);
+                    return VisitRawSqlQueryable(((IQueryable)constantExpression.Value).ElementType, sql);
                 }
             }
 
@@ -86,42 +90,45 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
 
         protected override Expression VisitEntityQueryable(Type elementType)
         {
+            Check.NotNull(elementType, nameof(elementType));
+
             return VisitSelectExpression(elementType,
-                (entityType, tableName) =>
+                (entityType, tableName, alias) =>
                     new TableExpression(
                         tableName,
                         QueryModelVisitor.QueryCompilationContext.GetSchema(entityType),
-                        _querySource.ItemName.StartsWith("<generated>_")
-                            ? tableName.First().ToString().ToLower()
-                            : _querySource.ItemName,
+                        alias,
                         _querySource));
         }
 
-        protected virtual Expression VisitRawSqlQueryable(Type elementType, string rawSql)
+        protected virtual Expression VisitRawSqlQueryable(Type elementType, string sql)
         {
+            Check.NotNull(elementType, nameof(elementType));
+            Check.NotNull(sql, nameof(sql));
+
             return VisitSelectExpression(elementType,
-                (entityType, tableName) =>
+                (entityType, tableName, alias) =>
                     new RawSqlDerivedTableExpression(
-                        rawSql,
-                        _querySource.ItemName.StartsWith("<generated>_")
-                            ? tableName.First().ToString().ToLower()
-                            : _querySource.ItemName,
+                        sql,
+                        alias,
                         _querySource));
         }
 
         private Expression VisitSelectExpression(
             Type elementType,
-            Func<IEntityType, string, TableExpressionBase> createTableExpression)
+            Func<IEntityType, string, string, TableExpressionBase> createTableExpression)
         {
-            Check.NotNull(elementType, nameof(elementType));
-
             var queryMethodInfo = RelationalQueryModelVisitor.CreateValueReaderMethodInfo;
             var entityType = QueryModelVisitor.QueryCompilationContext.Model.GetEntityType(elementType);
 
             var selectExpression = new SelectExpression();
             var tableName = QueryModelVisitor.QueryCompilationContext.GetTableName(entityType);
 
-            selectExpression.AddTable(createTableExpression(entityType, tableName));
+            var alias = _querySource.ItemName.StartsWith("<generated>_")
+                ? tableName.First().ToString().ToLower()
+                : _querySource.ItemName;
+
+            selectExpression.AddTable(createTableExpression(entityType, tableName, alias));
 
             QueryModelVisitor.AddQuery(_querySource, selectExpression);
 

@@ -181,8 +181,16 @@ namespace Microsoft.Data.Entity.Relational.Query.Sql
         {
             Check.NotNull(rawSqlDerivedTableExpression, nameof(rawSqlDerivedTableExpression));
 
-            _sql.Append(DelimitSubQuery(rawSqlDerivedTableExpression.RawSql))
-                .Append(" AS ")
+            _sql.Append("(")
+                .AppendLine();
+
+            using (_sql.Indent())
+            {
+                _sql.Append(rawSqlDerivedTableExpression.Sql);
+            }
+
+            _sql.AppendLine()
+                .Append(") AS ")
                 .Append(DelimitIdentifier(rawSqlDerivedTableExpression.Alias));
 
             return rawSqlDerivedTableExpression;
@@ -271,7 +279,7 @@ namespace Microsoft.Data.Entity.Relational.Query.Sql
             _sql.Append(" IN (");
 
             VisitJoin(inExpression.Values);
-            
+
             _sql.Append(")");
 
             return inExpression;
@@ -411,8 +419,8 @@ namespace Microsoft.Data.Entity.Relational.Query.Sql
 
                 VisitExpression(binaryExpression.Left);
 
-                if (binaryExpression.IsLogicalOperation() 
-                    && binaryExpression.Left is ColumnExpression 
+                if (binaryExpression.IsLogicalOperation()
+                    && binaryExpression.Left is ColumnExpression
                     && _insideFilter.Peek())
                 {
                     _sql.Append(" = 1");
@@ -703,13 +711,6 @@ namespace Microsoft.Data.Entity.Relational.Query.Sql
             Check.NotEmpty(identifier, nameof(identifier));
 
             return "\"" + identifier + "\"";
-        }
-
-        protected virtual string DelimitSubQuery([NotNull] string query)
-        {
-            Check.NotEmpty(query, nameof(query));
-
-            return "(" + query + ")";
         }
     }
 }
