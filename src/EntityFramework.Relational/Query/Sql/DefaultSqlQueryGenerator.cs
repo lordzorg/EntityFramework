@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -186,11 +187,17 @@ namespace Microsoft.Data.Entity.Relational.Query.Sql
 
             using (_sql.Indent())
             {
-                _sql.Append(rawSqlDerivedTableExpression.Sql);
+                var reader = new StringReader(rawSqlDerivedTableExpression.Sql);
+
+                var line = reader.ReadLine();
+                while (line != null)
+                {
+                    _sql.AppendLine(line);
+                    line = reader.ReadLine();
+                }
             }
 
-            _sql.AppendLine()
-                .Append(") AS ")
+            _sql.Append(") AS ")
                 .Append(DelimitIdentifier(rawSqlDerivedTableExpression.Alias));
 
             return rawSqlDerivedTableExpression;

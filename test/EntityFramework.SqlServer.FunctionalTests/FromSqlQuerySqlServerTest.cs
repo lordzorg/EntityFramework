@@ -30,7 +30,6 @@ FROM (
     SELECT * FROM Customers WHERE Customers.ContactName LIKE '%z%'
 ) AS [c]",
                 Sql);
-
         }
         public override void From_sql_queryable_cached_by_query()
         {
@@ -65,6 +64,20 @@ FROM (
     SELECT * FROM Customers WHERE Customers.ContactName LIKE '%o%'
 ) AS [c]
 WHERE [c].[ContactTitle] = @__title_0",
+                Sql);
+        }
+
+        public override void From_sql_queryable_with_multiple_line_query()
+        {
+            base.From_sql_queryable_with_multiple_line_query();
+
+            Assert.Equal(
+                @"SELECT [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[CustomerID], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM (
+    SELECT *
+    FROM Customers
+    WHERE Customers.City = 'London'
+) AS [c]",
                 Sql);
         }
 

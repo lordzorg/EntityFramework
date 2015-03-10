@@ -63,6 +63,17 @@ namespace Microsoft.Data.Entity.Relational.FunctionalTests
                 entryCount: 7);
         }
 
+        [Fact]
+        public virtual void From_sql_queryable_with_multiple_line_query()
+        {
+            AssertQuery<Customer>(
+                cs => cs.FromSql(@"SELECT *
+FROM Customers
+WHERE Customers.City = 'London'"),
+                cs => cs.Where(c => c.City == "London"),
+                entryCount: 6);
+        }
+
         protected NorthwindContext CreateContext()
         {
             return Fixture.CreateContext();
