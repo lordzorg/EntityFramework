@@ -8,6 +8,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using JetBrains.Annotations;
+using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
 using Microsoft.Data.Entity.Query;
 using Microsoft.Data.Entity.Query.ExpressionTreeVisitors;
@@ -77,7 +78,7 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
             if (constantExpression.Type.GetTypeInfo().IsGenericType
                 && constantExpression.Type.GetGenericTypeDefinition() == typeof(EntityQueryable<>))
             {
-                var sql = ((IMetadata)constantExpression.Value)["Sql"];
+                var sql = ((IAnnotatable)constantExpression.Value)["Sql"];
 
                 if (sql != null)
                 {

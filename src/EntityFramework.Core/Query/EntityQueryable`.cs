@@ -5,14 +5,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using JetBrains.Annotations;
-using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Utilities;
 using Remotion.Linq;
 
 namespace Microsoft.Data.Entity.Query
 {
     public class EntityQueryable<TResult>
-        : QueryableBase<TResult>, IAsyncEnumerable<TResult>, IMetadata
+        : QueryableBase<TResult>, IAsyncEnumerable<TResult>, IAnnotatable
     {
         private readonly LazyRef<Annotatable> _annotatable
             = new LazyRef<Annotatable>(
@@ -75,10 +75,6 @@ namespace Microsoft.Data.Entity.Query
                     base.ToString(),
                     string.Join(", ", _annotatable.Value.Annotations.Select(annotation =>
                         string.Format("{0} = {1}", annotation.Name, annotation.Value))));
-        }
-
-        private class Annotatable : MetadataBase
-        {
         }
     }
 }
