@@ -4,9 +4,11 @@
 using System;
 using System.Linq;
 using System.Linq.Expressions;
-using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Utilities;
+using JetBrains.Annotations;
+using Remotion.Linq.Clauses.Expressions;
+using Remotion.Linq.Clauses.ResultOperators;
 using Remotion.Linq.Parsing;
 
 namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
@@ -215,13 +217,12 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
                 case ExpressionType.Not:
                 {
                     var operand = VisitExpression(expression.Operand);
+                    var inExpression = operand as InExpression;
 
-                    if (operand != null)
-                    {
-                        return Expression.Not(operand);
-                    }
+                    return inExpression != null
+                        ? (Expression)new NotInExpression(inExpression.Column, inExpression.Values)
+                        : Expression.Not(operand);
                 }
-                    break;
                 case ExpressionType.Convert:
                 {
                     var operand = VisitExpression(expression.Operand);
@@ -254,6 +255,30 @@ namespace Microsoft.Data.Entity.Relational.Query.ExpressionTreeVisitors
                 if (memberBindings.Length == newExpression.Arguments.Count)
                 {
                     return Expression.Constant(memberBindings);
+                }
+            }
+
+            return null;
+        }
+
+        protected override Expression VisitSubQueryExpression(SubQueryExpression expression)
+        {
+            Check.NotNull(expression, nameof(expression));
+
+            if (expression.QueryModel.IsIdentityQuery()
+                && expression.QueryModel.ResultOperators.Count == 1)
+            {
+                var contains = expression.QueryModel.ResultOperators.First() as ContainsResultOperator;
+                if (contains != null)
+                {
+                    var parameter = expression.QueryModel.MainFromClause.FromExpression as ParameterExpression;
+                    var memberItem = contains.Item as MemberExpression;
+                    if (parameter != null && memberItem != null)
+                    {
+                        var columnExpression = (ColumnExpression)VisitMemberExpression(memberItem);
+
+                        return new InExpression(columnExpression, new[] { parameter });
+                    }
                 }
             }
 

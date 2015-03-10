@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using Microsoft.Data.Entity.Relational.Query.Expressions;
 using Microsoft.Data.Entity.Utilities;
 using Remotion.Linq.Parsing;
+using System.Collections.Generic;
 
 namespace Microsoft.Data.Entity.Relational.Query
 {
@@ -59,62 +60,71 @@ namespace Microsoft.Data.Entity.Relational.Query
         private Expression TryOptimize<TInExpression>(
             BinaryExpression binaryExpression,
             ExpressionType equalityType,
-            Func<ColumnExpression, Expression[], TInExpression> inExpressionFactory)
+            Func<ColumnExpression, List<Expression>, TInExpression> inExpressionFactory)
             where TInExpression : InExpressionBase
         {
-            ConstantExpression leftConstantExpression, rightConstantExpression;
+            var leftExpression = VisitExpression(binaryExpression.Left);
+            var rightExpression = VisitExpression(binaryExpression.Right);
+
+            Expression leftNonColumnExpression, rightNonColumnExpression;
+            IReadOnlyList<Expression> leftInValues = null;
+            IReadOnlyList<Expression> rightInValues = null;
 
             var leftColumnExpression
-                = MatchEqualityExpression(
-                    binaryExpression.Left,
-                    equalityType,
-                    out leftConstantExpression);
+                    = MatchEqualityExpression(
+                        leftExpression,
+                        equalityType,
+                        out leftNonColumnExpression);
 
             var rightColumnExpression
-                = MatchEqualityExpression(
-                    binaryExpression.Right,
-                    equalityType,
-                    out rightConstantExpression);
+                    = MatchEqualityExpression(
+                        rightExpression,
+                        equalityType,
+                        out rightNonColumnExpression);
+
+            if (leftColumnExpression == null)
+            {
+                leftColumnExpression = MatchInExpression<TInExpression>(leftExpression, ref leftInValues);
+            }
+
+            if (rightColumnExpression == null)
+            {
+                rightColumnExpression = MatchInExpression<TInExpression>(rightExpression, ref rightInValues);
+            }
 
             if (leftColumnExpression != null
                 && rightColumnExpression != null
                 && leftColumnExpression.Equals(rightColumnExpression))
             {
+                var inArguments = new List<Expression>();
+                if (leftNonColumnExpression != null)
+                {
+                    inArguments.Add(leftNonColumnExpression);
+                }
+
+                if (leftInValues != null)
+                {
+                    inArguments.AddRange(leftInValues);
+                }
+
+                if (rightNonColumnExpression != null)
+                {
+                    inArguments.Add(rightNonColumnExpression);
+                }
+
+                if (rightInValues != null)
+                {
+                    inArguments.AddRange(rightInValues);
+                }
+
                 return inExpressionFactory(
                     leftColumnExpression,
-                    new Expression[] { leftConstantExpression, rightConstantExpression });
+                    inArguments);
             }
 
-            if (leftColumnExpression != null)
+            if (leftExpression != binaryExpression.Left || rightExpression != binaryExpression.Right)
             {
-                var rightInExpression
-                    = VisitExpression(binaryExpression.Right) as TInExpression;
-
-                if (rightInExpression != null
-                    && leftColumnExpression.Equals(rightInExpression.Column))
-                {
-                    return inExpressionFactory(
-                        leftColumnExpression,
-                        new[] { leftConstantExpression }
-                            .Concat(rightInExpression.Values)
-                            .ToArray());
-                }
-            }
-
-            if (rightColumnExpression != null)
-            {
-                var leftInExpression
-                    = VisitExpression(binaryExpression.Left) as TInExpression;
-
-                if (leftInExpression != null
-                    && rightColumnExpression.Equals(leftInExpression.Column))
-                {
-                    return inExpressionFactory(
-                        rightColumnExpression,
-                        leftInExpression.Values
-                            .Concat(new[] { rightConstantExpression })
-                            .ToArray());
-                }
+                return Expression.MakeBinary(binaryExpression.NodeType, leftExpression, rightExpression);
             }
 
             return null;
@@ -123,23 +133,41 @@ namespace Microsoft.Data.Entity.Relational.Query
         private static ColumnExpression MatchEqualityExpression(
             Expression expression,
             ExpressionType equalityType,
-            out ConstantExpression constantExpression)
+            out Expression nonColumnExpression)
         {
-            constantExpression = null;
+            nonColumnExpression = null;
 
             var binaryExpression = expression as BinaryExpression;
 
             if (binaryExpression?.NodeType == equalityType)
             {
-                constantExpression
+                nonColumnExpression
                     = binaryExpression.Right as ConstantExpression
-                      ?? binaryExpression.Left as ConstantExpression;
+                      ?? binaryExpression.Right as ParameterExpression
+                      ?? (Expression)(binaryExpression.Left as ConstantExpression)
+                      ?? binaryExpression.Left as ParameterExpression;
 
-                if (constantExpression != null)
+                if (nonColumnExpression != null)
                 {
                     return binaryExpression.Right as ColumnExpression
                            ?? binaryExpression.Left as ColumnExpression;
                 }
+            }
+
+            return null;
+        }
+
+        private static ColumnExpression MatchInExpression<TInExpression>(
+            Expression expression,
+            ref IReadOnlyList<Expression> values)
+            where TInExpression : InExpressionBase
+        {
+            var inExpression = expression as TInExpression;
+            if (inExpression != null)
+            {
+                values = inExpression.Values;
+
+                return inExpression.Column;
             }
 
             return null;
